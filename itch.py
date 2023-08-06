@@ -25,16 +25,17 @@ def clean_url(url):
     scheme = url_parts.scheme.lower()
     netloc = url_parts.netloc.lower().replace("www.", "")
     path = url_parts.path.rstrip("/")
-    cleaned_url = urlunparse((scheme, netloc, path, "", "", ""))
-    return cleaned_url
+    cleaned = urlunparse((scheme, netloc, path, "", "", ""))
+
+    return cleaned
 
 
 def get_games_from(url):
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch()
         browser.new_context(viewport={"width": 1920, "height": 1080})
-
         page = browser.new_page()
+
         page.goto(url)
 
         games = []
@@ -75,11 +76,32 @@ def get_games_from(url):
                 }
             )
 
-        browser.close()
+        return games
+
+
+def extract_tags_from(games):
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        browser.new_context(viewport={"width": 1920, "height": 1080})
+        page = browser.new_page()
+
+        for game in games:
+            page.goto(game["url"])
+
+            tags_cell = page.query_selector('td:has-text("Tags") + td')
+            if not tags_cell:
+                continue
+
+            tag_elements = tags_cell.query_selector_all("a")
+            tags = [tag_element.inner_text() for tag_element in tag_elements]
+            game["tags"] = tags
 
         return games
 
 
 if __name__ == "__main__":
     games = get_games_from("https://itch.io/games/top-rated/last-30-days")
-    dump(games, "itch.debug.json")
+    dump(games, "itch.games.json")
+
+    games_tagged = extract_tags_from(games)
+    dump(games, "itch.games.tags.json")
