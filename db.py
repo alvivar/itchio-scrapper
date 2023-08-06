@@ -13,8 +13,20 @@ def upsert(games):
         db_author = db.get(Author.url == author_url)
 
         if db_author:
-            if not any(db_game["url"] == game["url"] for db_game in db_author["games"]):
+            game_index = next(
+                (
+                    index
+                    for index, db_game in enumerate(db_author["games"])
+                    if db_game["url"] == game["url"]
+                ),
+                None,
+            )
+
+            if game_index is not None:
+                db_author["games"][game_index] = game
+            else:
                 db_author["games"].append(game)
+
             data = {"games": db_author["games"]}
         else:
             data = {"author": author, "url": author_url, "games": [game]}
