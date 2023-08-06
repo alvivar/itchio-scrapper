@@ -1,19 +1,6 @@
 import json
-import os
-import sys
-from datetime import datetime
+from urllib.parse import urlparse, urlunparse
 from playwright.sync_api import sync_playwright
-
-
-frozen = getattr(sys, "frozen", False)  # Pyinstaller
-base_path = sys._MEIPASS if frozen else os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.join(base_path, ".env")
-
-if os.path.exists(env_path):
-    with open(env_path, "r") as f:
-        for line in f:
-            key, value = line.strip().split("=")
-            os.environ[key.strip()] = value.strip()
 
 
 def dump(data, filename):
@@ -33,18 +20,25 @@ def get_url(element):
     return element.get_attribute("href") if element else ""
 
 
-if __name__ == "__main__":
+def clean_url(url):
+    url_parts = urlparse(url)
+    scheme = url_parts.scheme.lower()
+    netloc = url_parts.netloc.lower().replace("www.", "")
+    path = url_parts.path.rstrip("/")
+    cleaned_url = urlunparse((scheme, netloc, path, "", "", ""))
+    return cleaned_url
+
+
+def get_games_from(url):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         browser.new_context(viewport={"width": 1920, "height": 1080})
 
         page = browser.new_page()
-        page.goto("https://itch.io/games/top-rated/last-30-days")
+        page.goto(url)
 
-        games_db = []
-
-        games = page.query_selector_all(".game_cell")
-        for game in games:
+        games = []
+        for game in page.query_selector_all(".game_cell"):
             game.scroll_into_view_if_needed()
             page.wait_for_timeout(100)
 
@@ -64,13 +58,13 @@ if __name__ == "__main__":
             apple_flag = game.query_selector(".icon-apple") is not None
             android_flag = game.query_selector(".icon-android") is not None
 
-            games_db.append(
+            games.append(
                 {
                     "title": title,
                     "description": description,
-                    "url": url,
+                    "url": clean_url(url),
                     "author": author,
-                    "author_url": author_url,
+                    "author_url": clean_url(author_url),
                     "genre": genre,
                     "thumbnail": thumbnail,
                     "web": web_flag,
@@ -81,4 +75,11 @@ if __name__ == "__main__":
                 }
             )
 
-        dump(games_db, "last_itch.json")
+        browser.close()
+
+        return games
+
+
+if __name__ == "__main__":
+    games = get_games_from("https://itch.io/games/top-rated/last-30-days")
+    dump(games, "itch.debug.json")
