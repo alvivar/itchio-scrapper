@@ -47,6 +47,8 @@ def get_games_from(url):
             description = get_text(game.query_selector(".game_text"))
             url = get_url(game.query_selector(".game_link"))
 
+            print(f"Found > {url}")
+
             author = get_text(game.query_selector(".game_author"))
             author_url = get_url(game.query_selector(".game_author a"))
 
@@ -79,15 +81,28 @@ def get_games_from(url):
         return games
 
 
-def extract_tags_from(games):
+def extract_game_info(games):
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch()
         browser.new_context(viewport={"width": 1920, "height": 1080})
         page = browser.new_page()
 
         for game in games:
-            page.goto(game["url"])
+            url = game["url"]
+            page.goto(url)
 
+            print(f"Game info > {url}")
+
+            # Price
+            original_price = page.query_selector(".original_price")
+            price = page.query_selector('span.dollars[itemprop="price"]')
+
+            original_price = original_price.inner_text() if original_price else None
+            price = price.inner_text() if price else None
+
+            game["price"] = original_price or price or 0
+
+            # Tags
             tags_cell = page.query_selector('td:has-text("Tags") + td')
             if not tags_cell:
                 continue
@@ -103,5 +118,5 @@ if __name__ == "__main__":
     games = get_games_from("https://itch.io/games/top-rated/last-30-days")
     dump(games, "itch.games.json")
 
-    games_tagged = extract_tags_from(games)
+    games_tagged = extract_game_info(games)
     dump(games, "itch.games.tags.json")
