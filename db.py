@@ -1,7 +1,7 @@
 from tinydb import Query, TinyDB
 
 
-db = TinyDB("db.json")
+db = TinyDB("data/db.json")
 
 
 def upsert(games):
