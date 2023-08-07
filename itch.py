@@ -1,19 +1,18 @@
-import json
 import os
 import re
+from datetime import datetime
 from urllib.parse import urlparse, urlunparse
 
 import requests
 from playwright.sync_api import sync_playwright
 
-
-THUMBDIR = "thumbnails"
-os.makedirs(THUMBDIR, exist_ok=True)
+import dump
 
 
-def dump(data, filename):
-    with open(filename, "w") as f:
-        json.dump(data, f)
+SCRAPS_DIR = "scraps"
+THUMBNAILS_DIR = "thumbnails"
+os.makedirs(SCRAPS_DIR, exist_ok=True)
+os.makedirs(THUMBNAILS_DIR, exist_ok=True)
 
 
 def download(image_url, filename):
@@ -44,12 +43,19 @@ def clean_url(url):
     return cleaned
 
 
+def clean_name(name):
+    name = re.sub(r"[^\w\-.]|[\s]", "_", name)
+    name = re.sub(r"__+", "_", name)
+
+    return name
+
+
 def get_games_from(url):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         browser.new_context(viewport={"width": 1920, "height": 1080})
-        page = browser.new_page()
 
+        page = browser.new_page()
         page.goto(url)
 
         games = []
@@ -83,7 +89,7 @@ def get_games_from(url):
                     "author": author,
                     "author_url": clean_url(author_url),
                     "genre": genre,
-                    "thumbnail": thumbnail,
+                    "thumbnail_url": thumbnail,
                     "web": web_flag,
                     "windows": windows_flag,
                     "linux": linux_flag,
@@ -95,7 +101,19 @@ def get_games_from(url):
         return games
 
 
-def extract_game_info(games):
+def download_images(games, path):
+    for game in games:
+        url = game["thumbnail_url"]
+        if url:
+            filename = clean_name(url)
+            download(url, f"{path}/{filename}")
+            game["thumbnail_file"] = filename
+            print(f"Downloaded: {url}")
+
+    return games
+
+
+def extract_game_info(games, dump_file=False):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         browser.new_context(viewport={"width": 1920, "height": 1080})
@@ -125,29 +143,19 @@ def extract_game_info(games):
             tags = [tag_element.inner_text() for tag_element in tag_elements]
             game["tags"] = tags
 
+        if dump_file:
+            time = datetime.now().strftime("%Y-%m-%d.%H-%M-%S")
+            dump.js(games, f"{SCRAPS_DIR}/itch.games.{time}.json")
+
         return games
-
-
-def clean_name(name):
-    name = re.sub(r"[^\w\-.]|[\s]", "_", name)
-    name = re.sub(r"__+", "_", name)
-
-    return name
-
-
-def download_images(games, path):
-    for game in games:
-        thumbnail_url = game["thumbnail"]
-        if thumbnail_url:
-            filename = clean_name(thumbnail_url)
-            download(thumbnail_url, f"{path}/{filename}")
 
 
 if __name__ == "__main__":
     games = get_games_from("https://itch.io/games/top-rated/last-30-days")
-    dump(games, "itch.games.json")
+    # dump.js(games, "itch.games.json")
 
-    download_images(games, THUMBDIR)
+    games = download_images(games, THUMBNAILS_DIR)
+    # dump.js(games, "itch.games.images.json")
 
-    # games_tagged = extract_game_info(games)
-    # dump(games, "itch.games.info.json")
+    games_tagged = extract_game_info(games, dump_file=True)
+    # dump.js(games, "itch.games.info.json")
