@@ -1,6 +1,7 @@
 import json
+
 import db
-from itch import get_games_from, extract_game_info
+from itch import extract_game_info, get_games_from
 
 
 def dump(data, filename):
