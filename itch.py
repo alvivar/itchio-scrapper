@@ -47,7 +47,7 @@ def get_games_from(url):
             description = get_text(game.query_selector(".game_text"))
             url = get_url(game.query_selector(".game_link"))
 
-            print(f"Found > {url}")
+            print(f"Found: {url}")
 
             author = get_text(game.query_selector(".game_author"))
             author_url = get_url(game.query_selector(".game_author a"))
@@ -91,7 +91,7 @@ def extract_game_info(games):
             url = game["url"]
             page.goto(url)
 
-            print(f"Game info > {url}")
+            print(f"Extracting game info: {url}")
 
             # Price
             original_price = page.query_selector(".original_price")
@@ -119,4 +119,4 @@ if __name__ == "__main__":
     dump(games, "itch.games.json")
 
     games_tagged = extract_game_info(games)
-    dump(games, "itch.games.tags.json")
+    dump(games, "itch.games.info.json")
