@@ -16,6 +16,33 @@ def dump(data, filename):
         json.dump(data, f)
 
 
+def get_all_posts(tumblr_client, blogName):
+    offset = 0
+    limit = 20
+
+    games = []
+    while True:
+        posts = tumblr_client.posts(blogName, limit=limit, offset=offset)
+        posts = posts["posts"]
+
+        for post in posts:
+            game = {
+                "id_string": post["id_string"],
+                "post_url": post["post_url"],
+                "summary": post["summary"],
+                "tags": post["tags"],
+            }
+
+            games.append(game)
+
+        if len(posts) < limit:
+            break
+
+        offset += limit
+
+    return games
+
+
 if __name__ == "__main__":
     tumblr = pytumblr.TumblrRestClient(
         CONSUMER_KEY,
@@ -24,8 +51,8 @@ if __name__ == "__main__":
         OAUTH_SECRET,
     )
 
-    info = tumblr.info()
-    dump(info, "tumblr.info.json")
+    blogName = "bestgamesintheplanet"
 
-    bestgames = tumblr.posts("bestgamesintheplanet")
-    dump(bestgames, "tumblr.bestgamesintheplanet.json")
+    # tumblr.edit_post(blogName, id=618837499726446592, type="photo", tags=[])
+    # info = tumblr.info()
+    # dump(info, "tumblr.info.json")
