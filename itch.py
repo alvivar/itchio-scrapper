@@ -1,11 +1,25 @@
 import json
+import os
+import re
 from urllib.parse import urlparse, urlunparse
+
+import requests
 from playwright.sync_api import sync_playwright
+
+
+THUMBDIR = "thumbnails"
+os.makedirs(THUMBDIR, exist_ok=True)
 
 
 def dump(data, filename):
     with open(filename, "w") as f:
         json.dump(data, f)
+
+
+def download(image_url, filename):
+    response = requests.get(image_url)
+    with open(filename, "wb") as f:
+        f.write(response.content)
 
 
 def get_text(element):
@@ -114,9 +128,26 @@ def extract_game_info(games):
         return games
 
 
+def clean_name(name):
+    name = re.sub(r"[^\w\-.]|[\s]", "_", name)
+    name = re.sub(r"__+", "_", name)
+
+    return name
+
+
+def download_images(games, path):
+    for game in games:
+        thumbnail_url = game["thumbnail"]
+        if thumbnail_url:
+            filename = clean_name(thumbnail_url)
+            download(thumbnail_url, f"{path}/{filename}")
+
+
 if __name__ == "__main__":
     games = get_games_from("https://itch.io/games/top-rated/last-30-days")
     dump(games, "itch.games.json")
 
-    games_tagged = extract_game_info(games)
-    dump(games, "itch.games.info.json")
+    download_images(games, THUMBDIR)
+
+    # games_tagged = extract_game_info(games)
+    # dump(games, "itch.games.info.json")
