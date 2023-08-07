@@ -1,6 +1,7 @@
-import json
 import os
+
 import pytumblr
+
 import env
 
 
@@ -9,11 +10,6 @@ CONSUMER_KEY = os.environ.get("CONSUMER_KEY")
 CONSUMER_SECRET = os.environ.get("CONSUMER_SECRET")
 OAUTH_TOKEN = os.environ.get("OAUTH_TOKEN")
 OAUTH_SECRET = os.environ.get("OAUTH_SECRET")
-
-
-def dump(data, filename):
-    with open(filename, "w") as f:
-        json.dump(data, f)
 
 
 def get_all_posts(tumblr_client, blogName):
